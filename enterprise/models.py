@@ -52,6 +52,7 @@ from enterprise.utils import (
     get_configuration_value,
     get_default_catalog_content_filter,
     parse_course_key,
+    NotConnectedToOpenEdX,
 )
 from enterprise.validators import validate_image_extension, validate_image_size
 
@@ -479,15 +480,17 @@ class EnterpriseCustomerUserManager(models.Manager):
             link_record = self.get(enterprise_customer=enterprise_customer, user_id=existing_user.id)
             link_record.delete()
 
+            if update_user is None:
+                raise NotConnectedToOpenEdX("This package must be installed in an OpenEdX environment.")
+
             # Remove the SailThru flags for enterprise learner.
-            if update_user:
-                update_user.delay(
-                    sailthru_vars={
-                        'is_enterprise_learner': False,
-                        'enterprise_name': None,
-                        },
-                    email=user_email
-                )
+            update_user.delay(
+                sailthru_vars={
+                    'is_enterprise_learner': False,
+                    'enterprise_name': None,
+                    },
+                email=user_email
+            )
 
         except User.DoesNotExist:
             # not capturing DoesNotExist intentionally to signal to view that link does not exist
